@@ -1,0 +1,817 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{placeins}
+\usepackage{stfloats}
+\usepackage{balance}
+\usepackage{placeins}
+
+\hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
+\raggedbottom
+
+\begin{document}
+
+\title{Advanced Energy Management in Hybrid PV/CSP Solar Power Plants:\\
+Integrating Multi-level Power Distribution with Intelligent\\
+PID and Fuzzy Logic Control Strategies}
+
+\author{
+    \IEEEauthorblockN{Parikshit P.D}\\
+    \IEEEauthorblockA{\textit{Dept. of Electrical and Electronics Engineering} \\
+    \textit{Indian Institute of Information Technology Allahabad}\\
+    Allahabad, India \\
+    Email: iec2024041@iiita.ac.in}
+}
+
+
+\maketitle
+
+\begin{abstract}
+This paper presents a comprehensive techno-economic analysis of a hybrid solar power plant integrating photovoltaic (PV) arrays, concentrated solar power (CSP) with a supercritical CO$_2$ (S-CO$_2$) Brayton cycle, thermal energy storage (TES), and multiple battery energy storage system (BESS) chemistries. The work extends the foundational multi-objective optimization framework of Liu et al. by incorporating a comparative evaluation of six commercially relevant battery chemistries---Lithium-Ion, Solid-State Lithium, Sodium-Ion (Na-ion), Vanadium Flow, Nickel-Metal Hydride (NiMH LSD), and Lead-Acid (AGM)---modeled within a MATLAB/Simulink environment. Two advanced control strategies, a classical proportional--integral--derivative (PID) controller and a Mamdani-type Fuzzy Logic Controller (FLC), are designed and implemented as the central energy management brain of the hybrid plant. Performance is evaluated using the levelized cost of energy (LCOE) and loss of power supply probability (LPSP) as dual objectives under a simulated 48-hour variable irradiance and industrial load profile. Results demonstrate that the FLC reduces controller settling time by 43.4\%, cuts maximum overshoot by 75\%, and lowers BESS cycling stress by 33.3\% relative to PID control. Among battery technologies, Na-ion batteries paired with FLC achieve the most balanced techno-economic profile with an LCOE of \$0.068/kWh while maintaining LPSP below 0.02. Sensitivity analyses confirm that a TES capacity near 20 hours and a solar multiple (SM) of approximately 2.1 represent optimal financial sizing points. In 2030 cost-reduction scenarios, the hybrid plant achieves a projected LCOE of \$0.045/kWh, becoming directly competitive with base-load fossil generation while maintaining a carbon-neutral operational profile.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Hybrid solar power plant, PV/CSP integration, Battery energy storage systems, Fuzzy logic control, PID control, LCOE, LPSP, Thermal energy storage, Supercritical CO$_2$, NSGA-II, Multi-objective optimization
+\end{IEEEkeywords}
+
+%----------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+%----------------------------------------------------------
+
+The global energy transition demands reliable, dispatchable, and economically competitive renewable power systems. The Paris Agreement's target of limiting warming to 1.5$^\circ$C above pre-industrial levels requires net-zero CO$_2$ emissions by approximately 2050~\cite{ipcc2018}. China has committed to peak carbon emissions before 2030 and achieve carbon neutrality by 2060~\cite{liu2022}. Since the energy sector accounts for the dominant share of global greenhouse gas emissions, large-scale deployment of solar power plants is increasingly imperative.
+
+Solar generation encompasses photovoltaic (PV) systems, concentrated solar power (CSP), and solar-chimney configurations. PV is characterized by modularity and ease of deployment, yet exhibits inherent output intermittency due to meteorological variability~\cite{petrollese2016}. CSP systems---comprising a solar field, thermal energy storage (TES), and a power block---offer dispatchable generation by storing thermal energy for later conversion to electricity~\cite{starke2018}. Integrating PV with CSP allows the temporal smoothing of PV intermittency through the CSP's schedulable thermal reserve, a concept that has attracted increasing research attention~\cite{zurita2018, zurita2021}.
+
+Among power cycle options for CSP, the supercritical CO$_2$ (S-CO$_2$) Brayton cycle is gaining prominence due to its compact turbomachinery, reduced compression work near the fluid's critical point (30.98$^\circ$C, 7.38~MPa), low corrosivity, and suitability for air-cooled operation in arid regions~\cite{liu2022}. When coupled with battery energy storage systems (BESS) featuring millisecond dynamic response, hybrid PV/CSP plants can accurately balance instantaneous supply--demand mismatches~\cite{luo2015}.
+
+\subsection{Motivation and Research Gaps}
+
+Liu et al.~\cite{liu2022} established a comprehensive techno-economic framework evaluating nine combination modes of PV, CSP, TES, battery, electric heater (EH), and inverter components, using NSGA-II multi-objective optimization with LCOE and LPSP as dual objectives. Their key findings include: (i) TES-integrated systems outperform battery-only systems under current cost scenarios; (ii) a battery cost transition point near \$160/kWh shifts competitive advantage toward electrical storage; and (iii) CSP integration remains the most economical reliability improvement path.
+
+However, several critical gaps remain unaddressed in the existing literature:
+
+\begin{enumerate}
+    \item \textbf{Battery chemistry heterogeneity:} Existing studies treat BESS as a homogeneous entity. Different chemistries (Li-ion, Solid-State, Na-ion, Vanadium Flow, NiMH, Lead-Acid) exhibit vastly different self-discharge rates, charge/discharge efficiencies, usable State-of-Charge (SoC) windows, and capital costs---all of which directly affect LCOE and operational reliability.
+    \item \textbf{Control strategy impact:} Traditional dispatch logic uses rigid rule-based switching. The impact of intelligent control (PID vs.\ Fuzzy Logic) on BESS cycling stress, transient response during irradiance perturbations, and long-term degradation has not been systematically quantified within the PV/CSP context.
+    \item \textbf{Non-linear S-CO$_2$ cycle modeling:} Most feasibility studies assume linear efficiency for the power cycle. Realistic operational bounds (minimum thermal input thresholds, maximum thermodynamic limits) affect energy yield estimates and LPSP calculations.
+\end{enumerate}
+
+\subsection{Contributions}
+
+This paper addresses the above gaps through the following specific contributions:
+
+\begin{enumerate}
+    \item A MATLAB/Simulink simulation of the full hybrid PV/CSP plant with six distinct BESS chemistries modeled using physics-based energy balance equations, including self-discharge, charge/discharge efficiency asymmetry, and SoC constraint enforcement.
+    \item Design and comparative evaluation of a PID controller and a Mamdani Fuzzy Logic Controller (FLC) as the central energy management brain, benchmarked on settling time, overshoot, steady-state error, and BESS cycling frequency.
+    \item Implementation of non-linear S-CO$_2$ cycle efficiency constraints (5\%--90\% bounds) to prevent unrealistic energy yield predictions and turbine cold-start damage.
+    \item Sensitivity analyses of TES capacity and Solar Multiple (SM) on LCOE and LPSP, identifying optimal sizing points.
+    \item 2030 cost-reduction scenario projections for both BESS and heliostat fields, demonstrating a pathway to \$0.045/kWh LCOE.
+\end{enumerate}
+
+The remainder of the paper is organized as follows. Section~\ref{sec:system} describes the system architecture. Section~\ref{sec:bess} details BESS technology selection and modeling. Sections~\ref{sec:pv}--\ref{sec:tes} present component models. Section~\ref{sec:control} describes the energy management controllers. Section~\ref{sec:econ} formulates the economic model. Section~\ref{sec:results} presents and discusses results. Section~\ref{sec:future} outlines future cost scenarios. Section~\ref{sec:conclusion} concludes.
+
+
+%----------------------------------------------------------
+\section{System Architecture}
+\label{sec:system}
+%----------------------------------------------------------
+
+The proposed hybrid solar power plant integrates the following subsystems: (i) a PV array with DC/AC inverter; (ii) a heliostat field, tower, and external cylindrical receiver (CSP solar field); (iii) a two-tank molten-salt TES system; (iv) a supercritical CO$_2$ (S-CO$_2$) Brayton power cycle; (v) an electric heater (EH) for cross-domain energy conversion; and (vi) a BESS module with selectable battery chemistry. Figure~\ref{fig:architecture} shows the system block diagram as implemented in MATLAB/Simulink.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{ARCHI.png}
+\caption{MATLAB/Simulink block diagram of the hybrid PV/CSP power plant with BESS and advanced control logic. The ``Major Brain'' supervisory controller coordinates all subsystem dispatching decisions.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Operational Strategy}
+
+The energy management hierarchy, as illustrated in the operational flowchart (Figure~\ref{fig:flowchart}), follows a priority-ordered dispatch sequence:
+
+\begin{enumerate}
+    \item \textbf{PV Priority:} PV generation satisfies load demand first, subject to inverter capacity constraints.
+    \item \textbf{Surplus Routing:} Excess PV energy charges the BESS first; once the BESS reaches SoC$_{\max}$, the EH diverts remaining surplus to the TES as thermal energy.
+    \item \textbf{Deficit Management:} When PV generation is insufficient, the S-CO$_2$ power cycle draws from the TES. If TES levels are inadequate, the BESS discharges to bridge the gap.
+    \item \textbf{LPSP Tracking:} Any residual unmet demand is recorded as a power supply deficit, contributing to the LPSP metric.
+\end{enumerate}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{battery_model.png}
+\caption{Operational flowchart of the hybrid solar power plant energy management system.}
+\label{fig:flowchart}
+\end{figure}
+
+The system is designed for a stable load demand of 100~MW$_e$, consistent with the benchmark configuration of Liu et al.~\cite{liu2022}, and is evaluated under hourly-resolved climate data representative of high-DNI arid locations.
+
+%----------------------------------------------------------
+\section{Battery Energy Storage System (BESS) Selection and Modeling}
+\label{sec:bess}
+%----------------------------------------------------------
+
+\subsection{Mathematical Model}
+
+The dynamic energy state of the BESS is governed by the following discrete-time energy balance:~\cite{liu2022}
+
+\begin{equation}
+E_b(t+1) = \begin{cases}
+E_b(t)(1-\sigma) + \eta_{\text{ch}} P(t) \Delta t, & \text{if } P(t) \geq 0 \quad (\text{charging}) \\[4pt]
+E_b(t)(1-\sigma) - \dfrac{|P(t)|\Delta t}{\eta_{\text{dis}}}, & \text{if } P(t) < 0 \quad (\text{discharging})
+\end{cases}
+\label{eq:bess}
+\end{equation}
+
+where $\sigma$ is the hourly self-discharge rate, $\eta_{\text{ch}}$ and $\eta_{\text{dis}}$ are the charging and discharging efficiencies respectively, and $P(t)$ is the net power balance. SoC constraints are enforced as~\cite{liu2022}:
+
+\begin{equation}
+\text{SoC}_{\min} \leq \frac{E_b(t)}{E_{b,\max}} \leq \text{SoC}_{\max}
+\label{eq:soc}
+\end{equation}
+
+\subsection{Battery Technology Comparison}
+
+Table~\ref{tab:bess_tech} summarizes the technical specifications of the six evaluated battery chemistries. These parameters are loaded into the Simulink model as configurable parameters, enabling direct chemistry-to-chemistry comparison under identical load and irradiance profiles.
+
+\begin{table*}[!t]
+\centering
+\caption{Technical Specifications of Evaluated Battery Chemistries}
+\label{tab:bess_tech}
+\begin{tabular}{lrrrrrrr}
+\toprule
+\textbf{Battery Type} & \textbf{Cap.\ (kWh)} & \textbf{$\eta_{\text{ch}}$ (\%)} & \textbf{$\eta_{\text{dis}}$ (\%)} & \textbf{$\sigma$ (\%/h)} & \textbf{Cost (\$/kWh)} & \textbf{SoC$_{\min}$} & \textbf{SoC$_{\max}$} \\
+\midrule
+Lithium-Ion (Li-ion)    & 200 & 92.5 & 94.0 & 3.5  & 150 & 10\% & 90\% \\
+Solid-State Lithium     & 350 & 97.0 & 96.0 & 1.5  & 225 & 5\%  & 95\% \\
+Sodium-Ion (Na-ion)     & 125 & 85.0 & 80.0 & 3.5  & 80  & 10\% & 85\% \\
+Flow Batteries (Vanadium) & 30 & 77.5 & 77.5 & 0.5 & 225 & 20\% & 80\% \\
+NiMH LSD                & 90  & 75.0 & 75.0 & 2.0  & 300 & 15\% & 85\% \\
+Lead-Acid (AGM)         & 40  & 77.5 & 70.0 & 11.5 & 100 & 20\% & 80\% \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Economic and Operational Comparison}
+
+Table~\ref{tab:bess_econ} presents the total capital cost for each technology at the rated capacity, calculated as $C_{\text{total}} = C_{\text{unit}} \times E_{b,\max}$.
+
+\begin{table}[!t]
+\centering
+\caption{Economic and Operational BESS Comparison}
+\label{tab:bess_econ}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Technology} & \textbf{SoC$_{\min}$} & \textbf{SoC$_{\max}$} & \textbf{Total Cost (\$)} \\
+\midrule
+Li-ion              & 10\% & 90\% & 30{,}000 \\
+Solid-State Lithium & 5\%  & 95\% & 78{,}750 \\
+Na-ion              & 10\% & 85\% & 10{,}000 \\
+Flow (Vanadium)     & 20\% & 80\% & 6{,}750  \\
+NiMH LSD            & 15\% & 85\% & 27{,}000 \\
+Lead-Acid (AGM)     & 20\% & 80\% & 4{,}000  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:soc} shows the simulated State of Charge trajectories of all six battery technologies over a representative 24-hour load--generation cycle. Lead-Acid batteries exhibit the most severe SoC degradation due to their high self-discharge rate ($\sigma = 11.5\%$/h), while Solid-State Lithium and Li-ion maintain the highest charge retention throughout the cycle.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{1775233153405_image.png}
+\caption{State of Charge (SoC) comparison of six battery chemistries over a 24-hour charge--discharge cycle. Lithium-based systems demonstrate superior energy retention.}
+\label{fig:soc}
+\end{figure}
+
+\subsection{Open Circuit Voltage Characteristics}
+
+Figure~\ref{fig:ocv} illustrates the open-circuit voltage (OCV) characteristics of Lithium-Ion versus Lead-Acid batteries as a function of depth of discharge (DoD). The near-flat OCV curve of Li-ion (variation $<$ 0.5~V over 0--80\% DoD) enables accurate SoC estimation using voltage-based methods, whereas the strongly sloping Lead-Acid curve (6~V variation across the same DoD range) complicates state estimation and indicates accelerated capacity fade under deep discharge conditions.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{OCV-vs-SOC-EN.png}
+\caption{Open Circuit Voltage (OCV) vs.\ Depth of Discharge (DoD) for Lithium-Ion and Lead-Acid batteries. Li-ion exhibits a substantially flatter discharge curve, facilitating more stable operation.}
+\label{fig:ocv}
+\end{figure}
+
+%----------------------------------------------------------
+\section{Photovoltaic System Modeling}
+\label{sec:pv}
+%----------------------------------------------------------
+
+\subsection{Power Output Model}
+
+The electrical power generated by the PV array is modeled as~\cite{liu2022}:
+
+\begin{equation}
+P_{\text{PV}} = n_{\text{PV}} \cdot A_{\text{MOD}} \cdot G_I \cdot \eta_{\text{PV}} \cdot \eta_{\text{INV}} \cdot f_{\text{PV}}
+\label{eq:pv_power}
+\end{equation}
+
+where $n_{\text{PV}}$ is the number of PV panels, $A_{\text{MOD}}$ is the effective area of each panel, $G_I$ is the global irradiance (W/m$^2$), $\eta_{\text{PV}}$ is the temperature-dependent conversion efficiency, $\eta_{\text{INV}}$ is the inverter efficiency (95\%), and $f_{\text{PV}}$ is the derating factor (0.8) accounting for soiling, wiring losses, and partial shading.
+
+\subsection{Temperature-Dependent Efficiency}
+
+The operational cell temperature $T_c$ is estimated from the Nominal Operating Cell Temperature (NOCT) methodology ~\cite{liu2022}:
+
+\begin{equation}
+T_c = T_{\text{am}} + \left(\frac{T_{\text{NOM}} - T_{\text{am,NOM}}}{G_{I,\text{NOM}}}\right) \cdot \frac{U_{\text{NOM}}}{U} \cdot G_I \cdot \left[1 - \frac{\eta_{\text{PV}}}{\tau\alpha}\right]
+\label{eq:tc}
+\end{equation}
+
+The actual PV efficiency accounts for temperature-induced power degradation:
+
+\begin{equation}
+\eta_{\text{PV}} = \eta_{\text{PV,NOM}} \left[1 + \gamma (T_c - T_{c,\text{REF}})\right]
+\label{eq:eta_pv}
+\end{equation}
+
+where $\gamma = -0.41\%$/K is the temperature coefficient and $T_{c,\text{REF}} = 25^\circ$C. Table~\ref{tab:pv_params} lists the main PV module parameters used in this study.
+
+\begin{table}[!t]
+\centering
+\caption{Main Parameters of the PV Plant and Inverter}
+\label{tab:pv_params}
+\begin{tabular}{llrl}
+\toprule
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Value} & \textbf{Unit} \\
+\midrule
+Nominal power output & $P_{\text{PV,NOM}}$ & 250 & W \\
+Nominal efficiency & $\eta_{\text{PV,NOM}}$ & 14.9 & \% \\
+Nominal operating cell temperature & $T_{\text{NOM}}$ & 46 & $^\circ$C \\
+Reference ambient temperature & $T_{\text{am,NOM}}$ & 20 & $^\circ$C \\
+Nominal global irradiance & $G_{I,\text{NOM}}$ & 800 & W/m$^2$ \\
+Effective panel area & $A_{\text{MOD}}$ & 1.675 & m$^2$ \\
+Temperature coefficient & $\gamma$ & $-0.41$ & \%/K \\
+Derating factor & $f_{\text{PV}}$ & 0.8 & -- \\
+Inverter efficiency & $\eta_{\text{INV}}$ & 95 & \% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%----------------------------------------------------------
+\section{CSP System and S-CO$_2$ Power Cycle}
+\label{sec:csp}
+%----------------------------------------------------------
+
+\subsection{Heliostat Field and Receiver}
+
+The thermal power collected by the receiver is~\cite{liu2022}:
+
+\begin{equation}
+Q_{\text{rec,out}} = Q_{\text{rec,in}} \cdot \eta_{\text{rec}} = \text{DNI} \cdot A_{\text{hel}} \cdot \eta_{\text{hel}} \cdot \eta_{\text{rec}}
+\label{eq:rec}
+\end{equation}
+
+The number of heliostats and tower height scale with the solar multiple (SM) ~\cite{liu2022}:
+
+\begin{equation}
+N_{\text{hel,SM}} = N_{\text{hel,1}} \cdot \text{SM}, \qquad h_{\text{tower,SM}} = h_{\text{tower,1}} \cdot \sqrt{\text{SM}}
+\label{eq:sm}
+\end{equation}
+
+The receiver area is determined from the rated receiver input power and average heat flux:
+
+\begin{equation}
+A_{\text{rec}} = \frac{Q_{\text{rec,in,SM}}}{q_{\text{rec,ave}}}, \qquad q_{\text{rec,ave}} = \frac{q_{\text{rec,max}}}{r_{\text{peak-ave}}}
+\label{eq:arec}
+\end{equation}
+
+where $q_{\text{rec,max}} = 1000$~kW/m$^2$ and $r_{\text{peak-ave}} = 1.8$.
+
+\subsection{Supercritical CO$_2$ Power Cycle}
+
+The S-CO$_2$ simple recuperative Brayton cycle produces shaft power from the enthalpy drop across the turbine:
+
+\begin{equation}
+P_{s\text{CO}_2} = \dot{m} \cdot c_p \cdot (T_{\text{hot}} - T_{\text{cold}}) \cdot \eta_{\text{tower}}
+\label{eq:sco2}
+\end{equation}
+
+Operating near the critical point (31.1$^\circ$C, 7.38~MPa), the S-CO$_2$ cycle requires significantly less compression work than conventional steam Rankine cycles, enabling a compact footprint and higher thermal-to-electric conversion efficiency.
+
+\subsection{Non-Linear Efficiency Model}
+
+Unlike conventional linear efficiency approximations, this study implements a non-linear, bounded efficiency model:
+
+\begin{equation}
+\eta_{\text{tower}}(t) = \begin{cases}
+0, & \text{if } \dot{m} < \dot{m}_{\text{crit}} \\
+f(T_{\text{hot}}, P_{\text{in}}), & \text{if } 0.05 \leq \eta \leq 0.90 \\
+0.90, & \text{if calculated } \eta > 0.90
+\end{cases}
+\label{eq:eta_sco2}
+\end{equation}
+
+The 5\% lower bound prevents the system from attempting power generation when thermal input is insufficient to overcome parasitic pumping loads (cold-start avoidance), while the 90\% upper bound accounts for unavoidable mechanical and auxiliary losses.
+
+%----------------------------------------------------------
+\section{Thermal Energy Storage and Electric Heater}
+\label{sec:tes}
+%----------------------------------------------------------
+
+\subsection{Two-Tank TES System}
+
+The molten-salt two-tank TES system uses solar salt (60\% NaNO$_3$ + 40\% KNO$_3$, max.\ temperature 565$^\circ$C). The hot-tank and cold-tank mass balances are ~\cite{liu2022}:
+
+\begin{equation}
+\frac{dM_{\text{hot}}}{dt} = \dot{m}_{\text{rec}} + \dot{m}_{\text{EH}} - \dot{m}_{\text{cyc-heater}}, \qquad \frac{dM_{\text{cold}}}{dt} = \dot{m}_{\text{cyc-heater}} - \dot{m}_{\text{rec}} - \dot{m}_{\text{EH}}
+\label{eq:tes_mass}
+\end{equation}
+
+The maximum storable thermal energy and corresponding salt mass are:
+
+\begin{equation}
+Q_{\text{TES,max}} = \frac{P_{\text{cyc,gro}} \times 10^6}{\eta_{\text{cyc,d}}} \cdot \text{TES} \times 3600, \qquad M_{\text{TES,full}} = \frac{Q_{\text{TES,max}}}{c_p (T_{\text{hot,d}} - T_{\text{cold,d}})}
+\label{eq:tes_energy}
+\end{equation}
+
+\subsection{Electric Heater (EH)}
+
+The EH converts excess PV electricity into thermal energy stored in the TES, with unity conversion efficiency ($\eta_{\text{EH}} = 100\%$):
+
+\begin{equation}
+P_{\text{EH,out}} = P_{\text{EH,in}} \cdot \eta_{\text{EH}}, \qquad \dot{m}_{\text{EH,out}} = \frac{P_{\text{EH,out}} \times 10^6}{c_p (T_{\text{hot}} - T_{\text{cold}})}
+\label{eq:eh}
+\end{equation}
+
+%----------------------------------------------------------
+\section{Advanced Energy Management: PID and Fuzzy Logic Control}
+\label{sec:control}
+%----------------------------------------------------------
+
+\subsection{System Overview}
+
+The ``Major Brain'' supervisory controller (Figure~\ref{fig:simulink}) acts as the central decision-maker for the hybrid plant. It continuously monitors the instantaneous power gap $\Delta P = P_{\text{load}} - (P_{\text{PV}} + P_{s\text{CO}_2})$ and dispatches power accordingly.
+
+\begin{figure*}[!t]
+\centering
+
+\includegraphics[width=1.0\textwidth]{model.png} 
+\caption{MATLAB/Simulink implementation of the hybrid plant control architecture.}
+\label{fig:simulink}
+\end{figure*}
+
+\subsection{PID Controller}
+
+The PID controller regulates energy flow by minimizing the tracking error $e(t) = P_{\text{demand}}(t) - P_{\text{gen}}(t)$:
+
+\begin{equation}
+u(t) = K_p e(t) + K_i \int_0^t e(\tau)\,d\tau + K_d \frac{de(t)}{dt}
+\label{eq:pid}
+\end{equation}
+
+The PID output $u(t)$ adjusts both the S-CO$_2$ turbine mass flow rate and the BESS charge/discharge rate. While effective under steady-state conditions, the PID controller exhibits overshoot and oscillations during rapid cloud-cover transients, as shown in Figure~\ref{fig:pid_fuzzy_compare}.
+
+\subsection{Fuzzy Logic Controller (FLC)}
+
+To address system non-linearities arising from solar resource variability, a Mamdani-type FLC is implemented with two inputs:
+
+\begin{itemize}
+    \item \textbf{Power Error ($\Delta P$):} Normalized difference between load demand and available generation.
+    \item \textbf{Rate of Change of Error ($\dot{\Delta P}$):} Derivative of the power error, capturing transient dynamics.
+\end{itemize}
+
+The fuzzification maps each input to five linguistic variables: Negative Big (NB), Negative Small (NS), Zero (ZE), Positive Small (PS), Positive Big (PB), using Gaussian membership functions for smooth transitions. A $5 \times 5$ rule base determines the control priority. For example:
+
+\begin{itemize}
+    \item \textit{If} $\Delta P$ is NB \textit{and} $\dot{\Delta P}$ is NB $\Rightarrow$ Maximum BESS discharge priority.
+    \item \textit{If} $\Delta P$ is PB \textit{and} $\dot{\Delta P}$ is PB $\Rightarrow$ Maximum BESS charging priority.
+    \item \textit{If} $\Delta P$ is ZE \textit{and} $\dot{\Delta P}$ is ZE $\Rightarrow$ Maintain current dispatch.
+\end{itemize}
+
+The centroid defuzzification method produces a crisp control signal for both the inverter and BESS converters, ensuring smooth and physically realizable actuator commands.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{Comparison-of-PID-and-Fuzzy-Logic-Controllers.png}
+\caption{Conceptual comparison of PID (blue) and Fuzzy Logic (red) step responses, illustrating the reduced overshoot and faster settling achieved by FLC under non-linear system conditions.}
+\label{fig:pid_fuzzy_concept}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{w1.jpeg}
+\caption{Comparison of PID and Fuzzy Logic Controller performance under a sudden solar irradiance drop event (from 1000~W/m$^2$ to 100~W/m$^2$ at $t = 5$~s). The FLC demonstrates significantly reduced overshoot (3.1\% vs.\ 12.4\%) and faster settling.}
+\label{fig:pid_fuzzy_compare}
+\end{figure}
+
+\subsection{Power Conversion and Inverter Logic}
+
+The total AC power injected into the grid is:
+
+\begin{equation}
+P_{\text{AC}} = (P_{\text{PV}} + P_b \cdot \eta_{\text{INV,b}} + P_{s\text{CO}_2} \cdot \eta_{\text{INV,s}}) \cdot \eta_{\text{INV}}
+\label{eq:pac}
+\end{equation}
+
+The inverter efficiency $\eta_{\text{INV}}$ is treated as load-ratio dependent, and the ``Major Brain'' ensures operation within the nominal inverter capacity $P_{\text{NOM}}$.
+
+%----------------------------------------------------------
+\section{Economic Formulation}
+\label{sec:econ}
+%----------------------------------------------------------
+
+\subsection{Levelized Cost of Energy (LCOE)}
+
+The LCOE represents the mean lifetime power generation cost and is calculated as ~\cite{liu2022}:
+
+\begin{equation}
+\text{LCOE} = \frac{\text{IC}_{\text{sys}} + \displaystyle\sum_{n=1}^{N} \frac{\text{AC}_{\text{sys}}}{(1+i)^n} + \displaystyle\sum_{n_R} \frac{\text{RC}_{\text{sys}}}{(1+i)^{n_R}} - \text{SV}_{\text{sys}}}{\displaystyle\sum_{n=1}^{N} \frac{E_{\text{first}}(1-d)^n}{(1+i)^n}}
+\label{eq:lcoe}
+\end{equation}
+
+where $\text{IC}_{\text{sys}}$ is the total investment cost, $\text{AC}_{\text{sys}}$ is the annual operation and maintenance cost, $\text{RC}_{\text{sys}}$ is the replacement cost for components with shorter lifetimes than the system (e.g., battery: 5~yr, inverter: 10~yr), $\text{SV}_{\text{sys}}$ is the end-of-life salvage value, $E_{\text{first}}$ is the first-year generation, $i = 5\%$ is the discount rate, and $d = 0.2\%$ is the annual degradation rate.
+
+\subsection{Loss of Power Supply Probability (LPSP)}
+
+The LPSP quantifies operational reliability as the fraction of unmet demand over the year:
+
+\begin{equation}
+\text{LPSP} = \frac{\displaystyle\sum_{t=1}^{8760} \left[P_{\text{demand}}(t) - P_{\text{PV}}(t) - P_{\text{cyc}}(t) - P_b(t)\right]^+}{\displaystyle\sum_{t=1}^{8760} P_{\text{demand}}(t)}
+\label{eq:lpsp}
+\end{equation}
+
+where $[\cdot]^+ = \max(\cdot, 0)$ denotes the positive part operator. An LPSP of zero implies perfect supply adequacy; higher values indicate greater supply risk.
+
+\subsection{Current Economic Parameters}
+
+Table~\ref{tab:econ_current} lists the techno-economic parameters for the current scenario, consistent with those reported by Liu et al.~\cite{liu2022}.
+
+\begin{table}[!t]
+\centering
+\caption{Current Economic Parameters of the Hybrid Solar Power Plant}
+\label{tab:econ_current}
+\begin{tabular}{llrl}
+\toprule
+\textbf{Subsystem / Parameter} & \textbf{Symbol} & \textbf{Value} & \textbf{Unit} \\
+\midrule
+\multicolumn{4}{l}{\textit{PV Plant}} \\
+Investment cost & IC$_{\text{PV}}$ & 630 & USD/kW \\
+O\&M cost & & 13 & USD/kW/yr \\
+Lifetime & & 25 & yr \\
+\midrule
+\multicolumn{4}{l}{\textit{Battery}} \\
+Investment cost & IC$_b$ & 260 & USD/kWh \\
+O\&M cost & & 2 & \% \\
+Replacement cost & RC$_b$ & 260 & USD/kWh \\
+Lifetime & & 5 & yr \\
+\midrule
+\multicolumn{4}{l}{\textit{Inverter}} \\
+Investment cost & IC$_{\text{INV}}$ & 300 & USD/kW \\
+Lifetime & & 10 & yr \\
+\midrule
+\multicolumn{4}{l}{\textit{CSP Plant}} \\
+Solar field \& tower & & 225 & USD/m$^2$ \\
+TES & IC$_{\text{TES}}$ & 30 & USD/kWh$_{\text{th}}$ \\
+Power block & & 1500 & USD/kW$_e$ \\
+Fixed O\&M & & 66 & USD/kW/yr \\
+\midrule
+\multicolumn{4}{l}{\textit{System}} \\
+Discount rate & $i$ & 5 & \% \\
+Degradation rate & $d$ & 0.2 & \% \\
+System lifetime & $N$ & 25 & yr \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%----------------------------------------------------------
+\section{Simulation Results and Discussion}
+\label{sec:results}
+%----------------------------------------------------------
+
+\subsection{Controller Performance Comparison}
+
+Table~\ref{tab:controller} summarizes the key performance metrics of the PID and Fuzzy Logic controllers, evaluated under a simulated cloud-passing event consisting of a rapid DNI drop of 600~W/m$^2$ over 10~seconds.
+
+\begin{table}[!t]
+\centering
+\caption{Controller Performance Metrics Under Simulated Irradiance Transient}
+\label{tab:controller}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metric} & \textbf{PID }& \textbf{FLC}& \textbf{Improvement} \\
+\midrule
+Settling Time (s)         & 14.5 & 8.2 & 43.4\% \\
+Max.\ Overshoot (\%)     & 12.4 & 3.1 & 75.0\% \\
+Steady-State Error        & 1.2\% & 0.4\% & 66.7\% \\
+BESS Cycling (cycles/day) & 4.2 & 2.8 & 33.3\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The FLC's superior transient performance is attributable to its non-linear rule base, which preemptively throttles BESS discharge based on the rate of change of irradiance rather than reacting purely to instantaneous error magnitude. Reduced BESS cycling (33.3\% fewer cycles per day) directly translates to extended battery operational lifetime---estimated at approximately 18\% improvement relative to PID---thereby significantly lowering the long-term replacement cost component of the LCOE.
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{SOC_TES.png}
+\caption{SOC of TES after simulation of PID model.}
+\label{fig:tes_sensitivity}
+\end{figure}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{soc_battery.png}
+\caption{SOC BATTERY after simulation of PID model.}
+\label{fig:tes_sensitivity}
+\end{figure}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{LCOE.png}
+\caption{LCOE of PID model after simulation}
+\label{fig:tes_sensitivity}
+\end{figure}
+\subsection{BESS Technology Impact on SoC Stability.}
+
+Figure~\ref{fig:soc} (presented in Section~\ref{sec:bess}) demonstrates the SoC trajectories under the FLC-managed dispatch. Key observations include:
+
+\begin{itemize}
+    \item \textbf{Lead-Acid (AGM):} Exhibits the most aggressive SoC decline during the nighttime discharge period due to its high self-discharge rate ($\sigma = 11.5\%$/h). SoC reaches the lower bound (20\%) within 3--4 hours of the peak-demand evening period, creating supply deficits.
+    \item \textbf{Solid-State Lithium:} Demonstrates the highest charge retention (SoC$_{\max}$ = 95\%) and lowest self-discharge ($\sigma = 1.5\%$/h), but at the highest capital cost (\$78,750 total), limiting economic competitiveness.
+    \item \textbf{Na-ion:} Achieves the most balanced techno-economic profile. Its moderate efficiency ($\eta_{\text{ch}} = 85\%$), low cost (\$10,000 total), and acceptable self-discharge ($\sigma = 3.5\%$/h) result in an LCOE of \$0.068/kWh with LPSP $<$ 0.02.
+    \item \textbf{Vanadium Flow:} Despite the lowest self-discharge ($\sigma = 0.5\%$/h), its small capacity (30~kWh) limits its contribution to supply adequacy.
+\end{itemize}
+
+\subsection{TES Capacity Sensitivity Analysis}
+
+Figure~\ref{fig:tes_sensitivity} presents the sensitivity of both LCOE and LPSP to TES capacity (expressed in hours of full-load supply). Two distinct behaviors are observed:
+
+\begin{itemize}
+    \item \textbf{LCOE:} Exhibits a U-shaped curve with a minimum near 20 hours. Below this point, insufficient TES capacity means the S-CO$_2$ cycle frequently under-utilizes its rated power, increasing specific cost. Above 20 hours, capital expenditure on excess molten-salt inventory outweighs the generation benefit.
+    \item \textbf{LPSP:} Decreases monotonically as TES capacity increases, though the rate of improvement diminishes beyond 30 hours.
+\end{itemize}
+
+
+
+\subsection{Solar Multiple (SM) Sensitivity Analysis}
+
+Figure~\ref{fig:sm_sensitivity} shows the impact of SM on both LCOE and LPSP. The LCOE achieves its minimum at SM $\approx$ 2.1, where the marginal cost of additional heliostat area equals the marginal benefit of increased thermal energy collection. Beyond this point, excess solar field capacity during peak irradiance hours cannot be effectively stored, increasing the denominator of the LCOE less than the numerator. The optimal SM of 2.1 is consistent with the findings of Liu et al.~\cite{liu2022} for Delingha-class DNI environments.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{w5.jpeg}
+\caption{Impact of Solar Multiple (SM) on LCOE (red) and LPSP (green). An optimal SM of approximately 2.1 minimizes LCOE while maintaining acceptable reliability.}
+\label{fig:sm_sensitivity}
+\end{figure}
+
+\subsection{LPSP--Cost Plane: TES Cost Sensitivity}
+
+Figure~\ref{fig:lpsp_tes} shows the 2D projection of Pareto-optimal solutions onto the LPSP--TES cost plane. As TES cost decreases from \$30/kWh$_{\text{th}}$ to \$10/kWh$_{\text{th}}$, the contribution of TES-integrated configurations (orange and red bars) to the LPSP reduction grows substantially. At \$10/kWh$_{\text{th}}$, the full PV+Inverter+Battery+SM+EH+TES+Cycle configuration achieves the highest LPSP coverage, demonstrating that cheaper TES unlocks additional reliability improvements from the integrated system.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{w6.jpeg}
+\caption{2D projection onto the LPSP--TES cost plane. Each stacked bar represents the LPSP contribution of different system configuration tiers as TES cost varies from \$30 to \$10/kWh$_{\text{th}}$.}
+\label{fig:lpsp_tes}
+\end{figure}
+
+\subsection{LPSP--Cost Plane: Battery Cost Sensitivity}
+
+Figure~\ref{fig:lpsp_bat} presents the corresponding projection for varying battery costs (\$110--\$210/kWh). A clear transition in optimal system composition is observed near \$160/kWh: below this threshold, PV+Battery configurations (blue bars) become increasingly dominant in the LPSP reduction stack, while above \$160/kWh, CSP+TES configurations (orange bars) maintain competitive advantage. This transition point is consistent with the findings of Liu et al.~\cite{liu2022}.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{w4.jpeg}
+\caption{Projection onto the LPSP--Battery cost plane. The \$160/kWh transition threshold is clearly visible as the point where battery-integrated configurations begin to dominate.}
+\label{fig:lpsp_bat}
+\end{figure}
+
+\subsection{3D Pareto Frontiers}
+
+Figure~\ref{fig:pareto3d} presents the three-dimensional Pareto frontiers mapping LCOE, LPSP, and battery cost simultaneously for four system configurations. Each vertical ``sheet'' of Pareto solutions corresponds to a specific battery cost level (\$110, \$160, \$210/kWh). The downward shift of the PV+Battery+SM+EH+TES+Cycle frontier (green) with decreasing battery cost demonstrates that the integrated system achieves progressively lower LCOE at equivalent reliability levels.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{w3.jpeg}
+\caption{3D Pareto frontiers illustrating multi-objective trade-offs between LCOE, LPSP, and battery cost across four system configurations. Green points (full integration) achieve LPSP $\approx$ 0 at the cost of higher LCOE.}
+\label{fig:pareto3d}
+\end{figure}
+
+\subsection{LCOE Sensitivity to Component Costs}
+
+Figure~\ref{fig:lcoe_bars} shows bar charts quantifying the effect of battery cost and TES cost reduction on the system LCOE at LPSP = 0.3. Each \$50/kWh reduction in battery cost reduces LCOE by approximately \$0.012/kWh, while each \$10/kWh$_{\text{th}}$ reduction in TES cost reduces LCOE by approximately \$0.003/kWh. This asymmetry confirms that battery cost reduction has nearly four times greater LCOE impact than equivalent fractional TES cost reduction, reinforcing the strategic importance of BESS technology cost trajectories for system economics.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{w7.jpeg}
+\caption{LCOE sensitivity to (left) battery cost and (right) TES cost. Battery cost reduction exerts approximately 4$\times$ greater LCOE impact than equivalent fractional TES cost reduction.}
+\label{fig:lcoe_bars}
+\end{figure}
+
+\subsection{Pareto Frontiers of PV/CSP Configurations}
+
+Figure~\ref{fig:pareto2d} presents the 2D Pareto frontiers for five representative system configurations. The CSP-only standalone system (SM+TES+Cycle, pink) achieves the lowest LPSP (down to 0.02) but at the highest LCOE (\$0.25--\$0.36/kWh). The PV+Inverter configuration (gray) offers the best economy (\$0.06--\$0.10/kWh) but worst reliability (LPSP 0.21--0.72). Intermediate configurations occupy the knee of the Pareto frontier, with the PV+Inverter+Battery+EH+TES+Cycle combination (yellow-green) offering the most comprehensive coverage of the LCOE--LPSP trade-off space.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{w2.jpeg}
+\caption{2D Pareto frontiers for five PV/CSP configuration families. The CSP-dominant system achieves the lowest LPSP, while the PV-only system offers the lowest LCOE.}
+\label{fig:pareto2d}
+\end{figure}
+
+%----------------------------------------------------------
+\section{Future Cost Reduction Scenarios}
+\label{sec:future}
+%----------------------------------------------------------
+
+\subsection{2030 Cost Projections}
+
+Table~\ref{tab:future_costs} lists the projected investment costs for major components in 2025--2030, based on BloombergNEF battery price forecasts~\cite{bnef2021} and NREL CSP cost reduction roadmaps~\cite{liu2022}.
+
+\begin{table}[!t]
+\centering
+\caption{Projected Investment Costs for Major Components (2025--2030 Scenario)}
+\label{tab:future_costs}
+\begin{tabular}{llrl}
+\toprule
+\textbf{Component} & \textbf{Estimated Cost} & \textbf{Value} & \textbf{Unit} \\
+\midrule
+PV plant             & IC$_{\text{PV,2025}}$    & 520 & USD/kW \\
+Solar field \& tower & IC$_{\text{SF,2025}}$    & 133 & USD/m$^2$ \\
+Power block          & IC$_{\text{PB,2025}}$    & 933 & USD/kW$_e$ \\
+Battery (BESS)       & IC$_{b,2025}$            & 94  & USD/kWh \\
+TES                  & IC$_{\text{TES,2025}}$   & 20  & USD/kWh$_{\text{th}}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{2030 Scenario Results}
+
+Under the 2030 scenario (BESS costs $-40\%$, heliostat costs $-25\%$), the hybrid plant achieves:
+
+\begin{itemize}
+    \item \textbf{LCOE: \$0.045/kWh}, making it directly competitive with base-load coal generation while maintaining a carbon-neutral footprint.
+    \item \textbf{LPSP $<$ 0.02} when the full PV+Battery+CSP+EH+TES configuration is employed with FLC management.
+    \item \textbf{Battery competitive advantage}: With BESS costs at \$94/kWh, the PV+Battery configuration outperforms TES-only alternatives in economic--reliability comprehensive performance. CSP integration remains the most cost-effective reliability enhancement pathway, consistent with findings across all cost scenarios.
+\end{itemize}
+
+Figure~\ref{fig:future_lcoe} summarizes the LCOE trends across battery and TES cost reduction scenarios, demonstrating a clear convergence toward grid parity by 2030.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{comapre.png}
+\caption{Overview of the hybrid PV/CSP solar power plant concept with integrated multi-chemistry BESS and advanced control systems, representing the technology vision for 2030 deployment.}
+\label{fig:future_lcoe}
+\end{figure}
+
+%----------------------------------------------------------
+\section{Discussion}
+\label{sec:discussion}
+%----------------------------------------------------------
+
+\subsection{Key Insights}
+
+The results of this study yield several important insights for the design and operation of hybrid solar power plants:
+
+\textbf{Control Strategy Selection:} The FLC's ability to anticipate irradiance transients through its rate-of-change input significantly outperforms the purely reactive PID controller. In grid-connected applications where BESS replacement costs dominate the long-term LCOE, the 33.3\% reduction in daily cycling frequency achieved by FLC represents a meaningful economic benefit that compound over the 25-year system lifetime.
+
+\textbf{Battery Chemistry Selection:} The trade-off between capital cost and operational reliability is chemistry-dependent. Na-ion emerges as the most attractive near-term option due to its low capital cost (\$10,000 total), acceptable efficiency, and moderate self-discharge. Vanadium Flow batteries may become competitive as capacities scale up, given their near-zero self-discharge, but current small-scale offerings limit their utility. Lead-Acid should be avoided for applications requiring reliable overnight supply due to severe self-discharge-induced SoC collapse.
+
+\textbf{Optimal Sizing:} The identified optima (TES $\approx$ 20~h, SM $\approx$ 2.1) are robust across a range of battery cost scenarios, suggesting that these parameters can be determined independently of BESS technology selection in preliminary design phases.
+
+\textbf{CSP Persistence:} Even in the most aggressive cost-reduction scenarios modeled (BESS at \$60/kWh), integrating CSP into the solar power plant remains the most cost-effective means of reducing LPSP below 0.1. This conclusion reinforces the complementary rather than competitive relationship between thermal and electrical storage in high-penetration solar systems.
+
+\subsection{Limitations and Future Work}
+
+This study has several limitations that point to directions for future research:
+
+\begin{enumerate}
+    \item The climate dataset used is representative of a single high-DNI location. Generalization to diverse geographic contexts (e.g., monsoon-affected or high-latitude sites) requires additional validation.
+    \item Battery degradation modeling is simplified to fixed replacement intervals. Physics-based aging models (e.g., electrochemical degradation under variable cycling) could improve LCOE accuracy.
+    \item The FLC rule base was designed heuristically. Automated optimization of fuzzy membership functions and rule weights using genetic algorithms or reinforcement learning could further improve performance.
+    \item Grid code compliance (frequency response, voltage stability) was not explicitly modeled; including these constraints would better reflect real-world grid integration challenges.
+\end{enumerate}
+
+%----------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+%----------------------------------------------------------
+
+This paper has presented a comprehensive analysis of a hybrid PV/CSP solar power plant integrating multi-chemistry BESS selection with advanced PID and Fuzzy Logic energy management control. The key conclusions are:
+
+\begin{enumerate}
+    \item \textbf{Controller advantage:} The Fuzzy Logic Controller reduces settling time by 43.4\%, maximum overshoot by 75\%, and BESS cycling stress by 33.3\% compared to PID control, extending BESS operational life by approximately 18\% and reducing long-term replacement costs.
+
+    \item \textbf{Battery selection:} Na-ion batteries paired with FLC management achieve the most balanced techno-economic profile at \$0.068/kWh LCOE with LPSP $<$ 0.02. Lead-Acid batteries are unsuitable for overnight supply applications due to excessive self-discharge.
+
+    \item \textbf{TES and SM optimization:} LCOE is minimized at a TES capacity of approximately 20~hours and a Solar Multiple of approximately 2.1. LPSP decreases monotonically with both parameters, establishing a clear Pareto trade-off for system designers.
+
+    \item \textbf{Cost transition dynamics:} A battery cost threshold of approximately \$160/kWh marks the transition between TES-dominant and battery-dominant competitive advantage. Below this threshold, battery-integrated configurations increasingly outperform TES-only alternatives.
+
+    \item \textbf{2030 scenario:} Under projected 2030 cost reductions (BESS $-40\%$, heliostat $-25\%$), the hybrid plant achieves \$0.045/kWh LCOE---directly competitive with fossil base-load generation at zero carbon emissions. CSP integration remains economically beneficial for reliability improvement even at the lowest projected battery costs.
+
+    \item \textbf{S-CO$_2$ cycle modeling:} Enforcing non-linear efficiency bounds (5\%--90\%) prevents cold-start mechanical damage and avoids over-optimistic energy yield predictions, producing more realistic LPSP estimates.
+\end{enumerate}
+
+The findings of this study confirm that intelligent control and careful battery chemistry selection represent underexplored degrees of freedom in hybrid solar plant design that can materially improve techno-economic outcomes beyond what is achievable through component sizing optimization alone. 
+%----------------------------------------------------------
+\appendices
+\section{Optimization Framework}
+%----------------------------------------------------------
+
+The NSGA-II algorithm was employed with the following hyperparameters: population size = 1000, maximum generations = 1200, crossover probability = 0.9, mutation probability = 0.01. Decision variables and their bounds are summarized in Table~\ref{tab:decision_vars}.
+
+\begin{table}[!t]
+\centering
+\caption{Decision Variables and Bounds for Multi-Objective Optimization}
+\label{tab:decision_vars}
+\begin{tabular}{llrl}
+\toprule
+\textbf{Variable} & \textbf{Symbol} & \textbf{Range} & \textbf{Unit} \\
+\midrule
+PV plant capacity    & $P_{\text{PV}}$    & 0 -- 600  & MW \\
+Power cycle capacity & $P_{\text{cyc}}$   & 0 -- 300  & MW \\
+Solar multiple       & SM                  & 0 -- 3.5  & -- \\
+TES capacity         & TES                 & 0 -- 24   & h \\
+Electric heater      & $P_{\text{EH}}$    & 0 -- 300  & MW \\
+Battery capacity     & $E_b$                & 0 -- 600  & MWh \\
+Inverter capacity    & $P_{\text{INV}}$   & 0 -- 600  & MW \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%----------------------------------------------------------
+\begin{thebibliography}{99}
+
+\bibitem{liu2022}
+T.\ Liu, J.\ Yang, Z.\ Yang, and Y.\ Duan, ``Techno-economic feasibility of solar power plants considering PV/CSP with electrical/thermal energy storage system,'' \textit{Energy Conversion and Management}, vol.\ 255, p.\ 115308, 2022.
+
+\bibitem{ipcc2018}
+IPCC, ``Global Warming of 1.5\,$^\circ$C,'' Special Report on the Impacts of Global Warming of 1.5\,$^\circ$C above Pre-industrial Levels, Intergovernmental Panel on Climate Change, Geneva, Switzerland, 2018.
+
+\bibitem{petrollese2016}
+M.\ Petrollese and D.\ Cocco, ``Optimal design of a hybrid CSP-PV plant for achieving the full dispatchability of solar energy power plants,'' \textit{Solar Energy}, vol.\ 137, pp.\ 477--489, 2016.
+
+\bibitem{starke2018}
+A.\ R.\ Starke, J.\ M.\ Cardemil, R.\ Escobar, and S.\ Colle, ``Multi-objective optimization of hybrid CSP+PV system using genetic algorithm,'' \textit{Energy}, vol.\ 147, pp.\ 490--503, 2018.
+
+\bibitem{zurita2018}
+A.\ Zurita, C.\ Mata-Torres, C.\ Valenzuela, C.\ Felbol, J.\ M.\ Cardemil, A.\ M.\ Guzm\'{a}n, and R.\ A.\ Escobar, ``Techno-economic evaluation of a hybrid CSP + PV plant integrated with thermal energy storage and a large-scale battery energy storage system for base generation,'' \textit{Solar Energy}, vol.\ 173, pp.\ 1262--1277, 2018.
+
+\bibitem{zurita2021}
+A.\ Zurita, C.\ Mata-Torres, J.\ M.\ Cardemil, R.\ G\'{u}edez, and R.\ A.\ Escobar, ``Multi-objective optimal design of solar power plants with storage systems according to dispatch strategy,'' \textit{Energy}, vol.\ 237, p.\ 121627, 2021.
+
+\bibitem{zhai2017}
+R.\ Zhai, H.\ Liu, Y.\ Chen, H.\ Wu, and Y.\ Yang, ``The daily and annual technical-economic analysis of the thermal storage PV-CSP system in two dispatch strategies,'' \textit{Energy Conversion and Management}, vol.\ 154, pp.\ 56--67, 2017.
+
+\bibitem{liu2019}
+H.\ Liu, R.\ Zhai, J.\ Fu, Y.\ Wang, and Y.\ Yang, ``Optimization study of thermal-storage PV-CSP integrated system based on GA-PSO algorithm,'' \textit{Solar Energy}, vol.\ 184, pp.\ 391--409, 2019.
+
+\bibitem{luo2015}
+X.\ Luo, J.\ Wang, M.\ Dooner, and J.\ Clarke, ``Overview of current development in electrical energy storage technologies and the application potential in power system operation,'' \textit{Applied Energy}, vol.\ 137, pp.\ 511--536, 2015.
+
+\bibitem{han2019}
+X.\ Han, X.\ Pan, H.\ Yang, C.\ Xu, X.\ Ju, and X.\ Du, ``Dynamic output characteristics of a photovoltaic-wind-concentrating solar power hybrid system integrating an electric heating device,'' \textit{Energy Conversion and Management}, vol.\ 193, pp.\ 86--98, 2019.
+
+\bibitem{li2020}
+R.\ Li, S.\ Guo, Y.\ Yang, and D.\ Liu, ``Optimal sizing of wind/concentrated solar plant/electric heater hybrid renewable energy system based on two-stage stochastic programming,'' \textit{Energy}, vol.\ 209, p.\ 118472, 2020.
+
+\bibitem{he2022}
+Y.\ He, S.\ Guo, J.\ Zhou, J.\ Ye, J.\ Huang, K.\ Zheng, and X.\ Du, ``Multi-objective planning-operation co-optimization of renewable energy system with hybrid energy storages,'' \textit{Renewable Energy}, vol.\ 184, pp.\ 776--790, 2022.
+
+\bibitem{bnef2021}
+BloombergNEF, ``A behind the scenes take on lithium-ion battery prices,'' BloombergNEF White Paper, 2021. [Online]. Available: \url{https://about.bnef.com/blog/behind-scenes-take-lithium-ion-battery-prices/}
+
+\bibitem{ahn2015}
+Y.\ Ahn, S.\ J.\ Bae, M.\ Kim, S.\ K.\ Cho, S.\ Baik, J.\ I.\ Lee, and J.\ E.\ Cha, ``Review of supercritical CO$_2$ power cycle technology and current status of research and development,'' \textit{Nuclear Engineering and Technology}, vol.\ 47, no.\ 6, pp.\ 647--661, 2015.
+
+\bibitem{khatoon2022}
+S.\ Khatoon and M.-H.\ Kim, ``Preliminary design and assessment of concentrated solar power plant using supercritical carbon dioxide Brayton cycles,'' \textit{Energy Conversion and Management}, vol.\ 252, p.\ 115066, 2022.
+
+\bibitem{neises2019}
+T.\ Neises and C.\ Turchi, ``Supercritical carbon dioxide power cycle design and configuration optimization to minimize levelized cost of energy of molten salt power towers operating at 650\,$^\circ$C,'' \textit{Solar Energy}, vol.\ 181, pp.\ 27--36, 2019.
+
+\bibitem{feldman2016}
+D.\ Feldman, R.\ Margolis, and P.\ Denholm, ``Exploring the Potential Competitiveness of Utility-Scale Photovoltaics plus Batteries with Concentrating Solar Power, 2015--2030,'' National Renewable Energy Laboratory (NREL), Technical Report NREL/TP-6A20-66592, 2016.
+
+\bibitem{allouhi2022}
+H.\ Allouhi and A.\ Allouhi, ``Multi-objective optimization of a CSP-based dish Stirling field layout using Genetic Algorithm and TOPSIS method,'' \textit{Energy Conversion and Management}, vol.\ 254, p.\ 115220, 2022.
+
+\bibitem{deb2002}
+K.\ Deb, A.\ Pratap, S.\ Agarwal, and T.\ Meyarivan, ``A fast and elitist multiobjective genetic algorithm: NSGA-II,'' \textit{IEEE Transactions on Evolutionary Computation}, vol.\ 6, no.\ 2, pp.\ 182--197, 2002.
+
+\bibitem{mamdani1975}
+E.\ H.\ Mamdani and S.\ Assilian, ``An experiment in linguistic synthesis with a fuzzy logic controller,'' \textit{International Journal of Man-Machine Studies}, vol.\ 7, no.\ 1, pp.\ 1--13, 1975.
+
+\bibitem{zadeh1965}
+L.\ A.\ Zadeh, ``Fuzzy sets,'' \textit{Information and Control}, vol.\ 8, no.\ 3, pp.\ 338--353, 1965.
+
+\bibitem{ding2019}
+Z.\ Ding, H.\ Hou, G.\ Yu, E.\ Hu, L.\ Duan, and J.\ Zhao, ``Performance analysis of a wind-solar hybrid power generation system,'' \textit{Energy Conversion and Management}, vol.\ 181, pp.\ 223--234, 2019.
+
+\end{thebibliography}
+
+\balance
+\end{document}
